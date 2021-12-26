@@ -1,0 +1,94 @@
+{
+  "name": "noahjacobson.com",
+  "version": "1.0.0",
+  "description": "",
+  "type": "module",
+  "scripts": {
+    "gulp": "node --experimental-json-modules ./node_modules/.bin/gulp",
+    "build": "npm run gulp build -- --prod",
+    "clean": "npm run gulp clean",
+    "start": "npm run gulp start",
+    "prepare": "husky install"
+  },
+  "author": "Noah Jacobson",
+  "license": "ISC",
+  "devDependencies": {
+    "@commitlint/cli": "^15.0.0",
+    "@commitlint/config-conventional": "^15.0.0",
+    "browser-sync": "^2.27.7",
+    "del": "^6.0.0",
+    "eslint": "^8.5.0",
+    "eslint-config-google": "^0.14.0",
+    "gulp": "^4.0.2",
+    "gulp-cleancss": "^0.2.2",
+    "gulp-concat": "^2.6.1",
+    "gulp-htmlmin": "^5.0.1",
+    "gulp-rename": "^2.0.0",
+    "gulp-sass": "^5.0.0",
+    "husky": "^7.0.4",
+    "postcss-scss": "^4.0.2",
+    "sass": "^1.45.1",
+    "stylelint": "^14.2.0",
+    "stylelint-config-standard-scss": "^3.0.0",
+    "webpack": "^5.65.0",
+    "webpack-stream": "^7.0.0",
+    "yargs": "^17.3.1"
+  },
+  "dependencies": {
+    "bulma": "^0.9.3",
+    "h5ai": "github:noahajac/h5ai#v0.30.1"
+  },
+  "commitlint": {
+    "extends": "@commitlint/config-conventional"
+  },
+  "stylelint": {
+    "extends": "stylelint-config-standard-scss",
+    "ignoreFiles": [
+      "./node_modules/**/*",
+      "./dist/**/*"
+    ]
+  },
+  "eslintConfig": {
+    "env": {
+      "browser": true,
+      "es2021": true
+    },
+    "extends": [
+      "google"
+    ],
+    "ignorePatterns": [
+      "/dist/**/*.js"
+    ],
+    "parserOptions": {
+      "ecmaVersion": 12,
+      "sourceType": "module"
+    },
+    "rules": {
+      "no-invalid-this": "off"
+    }
+  },
+  "build": {
+    "dist": "./dist",
+    "source": "./src",
+    "js": "./src/**/*.js",
+    "js_bundles": [],
+    "html": "./src/**/*.html",
+    "scss": "./src/**/*.{scss,css}",
+    "scss_bundles": [
+      {
+        "src": "./src/styles/bulma.scss",
+        "name": "styles"
+      }
+    ],
+    "files": [
+      "./src/**/*(.)*",
+      "./node_modules/h5ai/build/@(_h5ai)/**/!(*.md)"
+    ],
+    "distFiles": [
+      "./dist/**/*(.)*"
+    ],
+    "distHtml": "./dist/**/*.html",
+    "distJs": "./dist/**/*.js",
+    "distScss": "./dist/**/*.{scss,css}"
+  }
+}
