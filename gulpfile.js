@@ -13,6 +13,7 @@ import critical from 'critical';
 import merge from 'gulp-merge-json';
 import stripComments from 'gulp-strip-json-comments';
 import favicons from 'gulp-favicons';
+import through from 'through2';
 import fileinclude from 'gulp-file-include';
 
 /**
@@ -54,7 +55,7 @@ const config = (() => {
 
   // Create the glob for the favicon.
   config.sourceGlobs.favicon = [config.source + config.favicon];
-  config.distGlobs.favicon = [config.dist + config.favicon];
+  config.distGlobs.favicon = [config.dist + '/favicons/*'];
 
   /**
    * Inverts a glob array from include to exclude.
@@ -87,6 +88,12 @@ const config = (() => {
   config.h5aiConfig.dist = config.dist + config.h5aiConfig.dist;
   config.h5aiConfig.configDir = config.h5aiConfig.dist +
       config.h5aiConfig.configDir;
+
+  // Add exclusions for favicons.
+  config.distGlobs.script.push(...invertGlob(config.distGlobs.favicon));
+  config.distGlobs.html.push(...invertGlob(config.distGlobs.favicon));
+  config.distGlobs.scss.push(...invertGlob(config.distGlobs.favicon));
+  config.distGlobs.file.push(...invertGlob(config.distGlobs.favicon));
 
   // Add exclusions for h5ai.
   config.distGlobs.script.push(...invertGlob([config.h5aiConfig.dist + '/*']));
@@ -186,6 +193,12 @@ const html = (source = config.sourceGlobs.html) => {
       }))
       .pipe(htmlmin({collapseWhitespace: true}))
       .on('error', console.log)
+      .pipe(through.obj( function( file, _enc, cb ) {
+        const date = new Date();
+        file.stat.atime = date;
+        file.stat.mtime = date;
+        cb( null, file );
+      }))
       .pipe(gulp.dest(config.dist));
 };
 
@@ -278,20 +291,15 @@ export const build = gulp.series(
  */
 const browserSyncInit = () => {
   browserSync.init({
-    server: './dist',
+    server: config.dist,
     open: false,
-    files: ['./dist/**/*'],
+    files: [config.dist + '/!(*.css)'],
     listen: '::1',
+    middleware: (_req, res, next) => {
+      res.setHeader('cache-control', 'max-age=0; no-cache');
+      next();
+    },
   });
-  return Promise.resolve();
-};
-
-/**
- * Force reloads browsersync browsers.
- * @return {Promise} Resolved promise
- */
-const browserSyncReload = () => {
-  browserSync.reload();
   return Promise.resolve();
 };
 
@@ -319,7 +327,6 @@ const startWatch = () => {
       taskCreator(clean, config.distGlobs.scss),
       taskCreator(scss),
       taskCreator(html),
-      taskCreator(browserSyncReload),
   );
 
   const faviconAndHtml = gulp.series(
@@ -327,7 +334,6 @@ const startWatch = () => {
       taskCreator(clean, config.distGlobs.favicon),
       taskCreator(favicon),
       taskCreator(html),
-      taskCreator(browserSyncReload),
   );
 
   gulp.watch(config.sourceGlobs.favicon, taskCreator(change))
