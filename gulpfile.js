@@ -5,195 +5,356 @@ import del from 'del';
 import sassCompiler from 'sass';
 import htmlmin from 'gulp-htmlmin';
 import webpack from 'webpack-stream';
-import rename from 'gulp-rename';
 import cleanCss from 'gulp-cleancss';
-import concat from 'gulp-concat';
 import yargs from 'yargs';
 import {hideBin} from 'yargs/helpers';
 import packageFile from './package.json';
+import critical from 'critical';
+import merge from 'gulp-merge-json';
+import stripComments from 'gulp-strip-json-comments';
+import favicons from 'gulp-favicons';
+import fileinclude from 'gulp-file-include';
 
 /**
- * Browsersync instance.
+ * Create browsersync object.
  */
 const browserSync = bsCreate();
 
 /**
- * SASS compiler.
- */
-const sass = gulpSass(sassCompiler);
-
-/**
  * Build config from package.json.
  */
-const config = packageFile.build;
+const config = (() => {
+  const config = packageFile.build;
 
-/*
- * Add script, style, and html globs as excludes
- * to files.
- */
-config.files.push('!' + config.js);
-config.files.push('!' + config.scss);
-config.files.push('!' + config.html);
-config.distFiles.push('!' + config.distJs);
-config.distFiles.push('!' + config.distScss);
-config.distFiles.push('!' + config.distHtml);
+  // Create globs for scripts.
+  config.sourceGlobs = [];
+  config.distGlobs = [];
+  config.sourceGlobs.script = [];
+  config.distGlobs.script = [];
+  config.script.forEach((glob) => {
+    config.sourceGlobs.script.push(config.source + glob);
+    config.distGlobs.script.push(config.dist + glob);
+  });
+
+  // Create globs for html.
+  config.sourceGlobs.html = [];
+  config.distGlobs.html = [];
+  config.html.forEach((glob) => {
+    config.sourceGlobs.html.push(config.source + glob);
+    config.distGlobs.html.push(config.dist + glob);
+  });
+
+  // Create globs for scss.
+  config.sourceGlobs.scss = [];
+  config.distGlobs.scss = [];
+  config.scss.forEach((glob) => {
+    config.sourceGlobs.scss.push(config.source + glob);
+    config.distGlobs.scss.push(config.dist + glob);
+  });
+
+  // Create the glob for the favicon.
+  config.sourceGlobs.favicon = [config.source + config.favicon];
+  config.distGlobs.favicon = [config.dist + config.favicon];
+
+  /**
+   * Inverts a glob array from include to exclude.
+   * @param {String[]} globArray Array of globs
+   * @return {String[]} Inverted array of globs
+   */
+  const invertGlob = (globArray) => {
+    return globArray.map((glob) => {
+      return '!' + glob;
+    });
+  };
+
+  // Create globs for files.
+  config.sourceGlobs.file = [];
+  config.distGlobs.file = [];
+  config.sourceGlobs.file.push(...invertGlob(config.sourceGlobs.script));
+  config.sourceGlobs.file.push(...invertGlob(config.sourceGlobs.html));
+  config.sourceGlobs.file.push(...invertGlob(config.sourceGlobs.scss));
+  config.sourceGlobs.file.push(...invertGlob(config.sourceGlobs.favicon));
+  config.distGlobs.file.push(...invertGlob(config.distGlobs.script));
+  config.distGlobs.file.push(...invertGlob(config.distGlobs.html));
+  config.distGlobs.file.push(...invertGlob(config.distGlobs.scss));
+  config.distGlobs.file.push(...invertGlob(config.distGlobs.favicon));
+  config.file.forEach((glob) => {
+    config.sourceGlobs.file.unshift(config.source + glob);
+    config.distGlobs.file.unshift(config.dist + glob);
+  });
+
+  // Add full paths to h5ai config.
+  config.h5aiConfig.dist = config.dist + config.h5aiConfig.dist;
+  config.h5aiConfig.configDir = config.h5aiConfig.dist +
+      config.h5aiConfig.configDir;
+
+  // Add exclusions for h5ai.
+  config.distGlobs.script.push(...invertGlob([config.h5aiConfig.dist + '/*']));
+  config.distGlobs.html.push(...invertGlob([config.h5aiConfig.dist + '/*']));
+  config.distGlobs.scss.push(...invertGlob([config.h5aiConfig.dist + '/*']));
+  config.distGlobs.file.push(...invertGlob([config.h5aiConfig.dist + '/*']));
+  config.distGlobs.favicon.push(...invertGlob([config.h5aiConfig.dist + '/*']));
+
+  return config;
+})();
 
 /**
- * True if production build.
+ * isProd true if production build.
  */
 const {prod: isProd} = yargs(hideBin(process.argv)).argv;
 
 /**
- * Cleans dist directory of all files.
- * @return {NodeJS.ReadWriteStream} Node stream
+ * Effectively removes callback function added by gulp.
+ * @param {Function} func Function to execute
+ * @param  {...any} args Function arguments
+ * @return {Function} Function to run task with arguments.
  */
-export const clean = () => {
-  return del((config.dist + '/*'), {dot: true});
+const taskCreator = (func, ...args) => {
+  const f = () => {
+    return func(...args);
+  };
+
+  Object.defineProperty(f, 'name', {
+    value: func.name,
+    writable: false,
+  });
+
+  return f;
 };
 
 /**
- * Creates JavaScript bundles via webpack.
- * @param {Object} bundle bundle to create
- * @param {String | String[]} bundle.src Path of file to source
- * @param {String} bundle.name Name of bundle
+ * Cleans directory of files.
+ * @param {String | String[]} source Glob to clean
  * @return {NodeJS.ReadWriteStream} Node stream
  */
-const script = ({src, name}) => {
-  const webpackOptions = {
-    mode: isProd ? 'production' : 'development',
-    output: {filename: `${name}.js`},
-    devtool: isProd ? undefined : 'cheap-source-map',
-  };
-  return gulp.src(src)
-      .pipe(webpack(webpackOptions))
-      .pipe(rename((path) => {
-        path.dirname = '';
-        path.basename = name;
+const clean = (source = config.dist + '/*') => {
+  return del((source), {dot: true});
+};
+
+/**
+ * Callable task function for clean.
+ */
+const cleanTask = taskCreator(clean);
+
+/**
+ * Creates JavaScript files via webpack.
+ * @param {String | String[]} source Glob of file to source
+ * @return {NodeJS.ReadWriteStream} Node stream
+ */
+const script = (source = config.sourceGlobs.script) => {
+  return gulp.src(source)
+      .pipe(webpack({
+        mode: isProd ? 'production' : 'development',
+        devtool: isProd ? undefined : 'cheap-source-map',
+      }, null, (err) => {
+        if (err) {
+          console.log(err);
+        }
       }))
       .pipe(gulp.dest(config.dist));
 };
 
 /**
- * Creates css bundles via SASS.
- * @param {Object} bundle bundle to create
- * @param {String | String[]} bundle.src Path of file to source
- * @param {String} bundle.name Name of bundle
+ * Creates and minifies css files via sass.
+ * @param {String | String[]} source Glob of files to source
  * @return {NodeJS.ReadWriteStream} Node stream
  */
-const style = ({src, name}) => {
-  return gulp.src(src)
-      .pipe(sass({
+const scss = (source = config.sourceGlobs.scss) => {
+  return gulp.src(source)
+      .pipe(gulpSass(sassCompiler)({
         includePaths: ['node_modules'],
       }))
-      .pipe(concat(`${name}.css`))
       .pipe(cleanCss())
-      .pipe(rename((path) => {
-        path.dirname = '';
-        path.basename = name;
-      }))
       .pipe(gulp.dest(config.dist));
 };
 
 /**
- * Sources HTML files, minifies them, and writes them to dist folder.
- * @param {String | String[]} path Path of files to source
+ * Sources HTML files, does critical CSS analysis,
+ * minifies them, and writes them to dist folder.
+ * @param {String | String[]} source Glob of files
  * @return {Node.ReadWriteStream} Node stream
  */
-const html = (path) => {
-  return gulp.src(path)
+const html = (source = config.sourceGlobs.html) => {
+  return gulp.src(source)
+      .pipe(fileinclude({
+        basepath: config.dist,
+      }))
+      .pipe(critical.stream({
+        base: './dist',
+        inline: true,
+        extract: true,
+      }))
       .pipe(htmlmin({collapseWhitespace: true}))
+      .on('error', console.log)
       .pipe(gulp.dest(config.dist));
 };
 
 /**
  * Sources and copies files not sourced by scripts, styles, or html to dist
  * folder.
- * @param {string | string[]} path Path of files to source
+ * @param {String | String[]} source Path of files to source
  * @return {NodeJS.ReadWriteStream} Node stream
  */
-const files = (path) => {
-  return gulp.src(path, {dot: true, nodir: true})
+const file = (source = config.sourceGlobs.file) => {
+  return gulp.src(source, {dot: true, nodir: true})
       .pipe(gulp.dest(config.dist));
 };
 
-
 /**
- * Dynamically names anonymous functions.
- * @param {Function} action Anonymous function that calls another with
- * parameters
- * @param {String} name Name for action
- * @return {Function} Returns a
+ * Generates favicon files.
+ * @param {String | String[]} source glob for favicon file
+ * @return {NodeJS.ReadWriteStream} Node stream
  */
-const dynamicFunc = (action, name) => {
-  const f = action;
-  Object.defineProperty(f, 'name', {
-    value: name,
-    writable: false,
-  });
-  return f;
+const favicon = (source = config.sourceGlobs.favicon) => {
+  return gulp.src(source)
+      .pipe(
+          favicons({
+            ...config.faviconConfig,
+            path: '/favicons/',
+            scope: '/',
+            version: packageFile.version,
+            logging: false,
+            html: 'favicons.html',
+            pipeHTML: true,
+            replace: true,
+          }),
+      )
+      .on('error', console.log)
+      .pipe(gulp.dest(config.dist + '/favicons/'));
 };
 
 /**
- * Array containing functions for each script bundle.
+ * Sources and copies h5ai files.
+ * @param {String | String[]} source Path of files to source
+ * @return {NodeJS.ReadWriteStream} Node stream
  */
-const scripts = config.js_bundles.map((obj) =>
-  dynamicFunc(() => script(obj), `${obj.name}.js`));
+const h5ai = (source = config.h5aiConfig.source) => {
+  return gulp.src(source, {dot: true})
+      .pipe(gulp.dest(config.h5aiConfig.dist));
+};
 
 /**
- * Array containing functions for each style bundle.
+ * Overrides certain h5ai config values.
+ * @param {String | String[]} source Path of config file
+ * @return {NodeJS.ReadWriteStream} Node stream
  */
-const styles = config.scss_bundles.map((obj) =>
-  dynamicFunc(() => style(obj), `${obj.name}.css`));
+const h5aiConfigOverride = (source =
+config.h5aiConfig.configDir + '/' + config.h5aiConfig.configFile) => {
+  return gulp.src(source)
+      .pipe(stripComments())
+      .pipe(merge({
+        endObj: config.h5aiConfig.configOverrides,
+        fileName: config.h5aiConfig.configFile,
+      }))
+      .pipe(gulp.dest(config.h5aiConfig.configDir));
+};
 
 /**
  * Runs build functions.
  * @return {Node.ReadWriteStream} Node stream
  */
 export const build = gulp.series(
-    clean,
+    cleanTask,
     gulp.parallel(
-        ...scripts,
-        ...styles,
-        dynamicFunc(() => {
-          return html(config.html);
-        }, 'html'),
-        dynamicFunc(() => {
-          return files(config.files);
-        }, 'files'),
+        gulp.series(
+            gulp.parallel(
+                taskCreator(favicon),
+                taskCreator(scss),
+            ),
+            taskCreator(html),
+        ),
+        gulp.series(
+            taskCreator(h5ai),
+            taskCreator(h5aiConfigOverride),
+        ),
+        taskCreator(script),
+        taskCreator(file),
     ),
 );
 
 /**
- * Regenerates HTML files.
- * @returns {Node.ReadWriteStream} Node stream
+ * Starts browsersync serve and watch functions.
+ * @return {Promise} Resolved promise
  */
-const regenerateHtml = gulp.series(
-    dynamicFunc(() => {
-      return del(config.distHtml);
-    }, 'cleanHtml'),
-    dynamicFunc(() => {
-      return html(config.html);
-    }, 'html'),
-);
+const browserSyncInit = () => {
+  browserSync.init({
+    server: './dist',
+    open: false,
+    files: ['./dist/**/*'],
+    listen: '::1',
+  });
+  return Promise.resolve();
+};
 
 /**
- * Regenerates regular files.
- * @returns {Node.ReadWriteStream} Node stream
+ * Force reloads browsersync browsers.
+ * @return {Promise} Resolved promise
  */
-const regenerateFiles = gulp.series(
-    dynamicFunc(() => {
-      return del((config.distFiles), {dot: true});
-    }, 'cleanFiles'),
-    dynamicFunc(() => {
-      return files(config.files);
-    }, 'files'),
-);
+const browserSyncReload = () => {
+  browserSync.reload();
+  return Promise.resolve();
+};
+
+/**
+ * Starts watching for changed files.
+ * @return {Promise} Resolved promise
+ */
+const startWatch = () => {
+  gulp.watch(config.sourceGlobs.script, taskCreator(change))
+      .on('add', script)
+      .on('change', script)
+      .on('unlink', gulp.series(
+          taskCreator(clean, config.distGlobs.script),
+          taskCreator(script)));
+
+  gulp.watch(config.sourceGlobs.file, taskCreator(change))
+      .on('add', file)
+      .on('change', file)
+      .on('unlink', gulp.series(
+          taskCreator(clean, config.distGlobs.file),
+          taskCreator(file)));
+
+  const htmlAndScss = gulp.series(
+      taskCreator(clean, config.distGlobs.html),
+      taskCreator(clean, config.distGlobs.scss),
+      taskCreator(scss),
+      taskCreator(html),
+      taskCreator(browserSyncReload),
+  );
+
+  const faviconAndHtml = gulp.series(
+      taskCreator(clean, config.distGlobs.html),
+      taskCreator(clean, config.distGlobs.favicon),
+      taskCreator(favicon),
+      taskCreator(html),
+      taskCreator(browserSyncReload),
+  );
+
+  gulp.watch(config.sourceGlobs.favicon, taskCreator(change))
+      .on('add', faviconAndHtml)
+      .on('change', faviconAndHtml)
+      .on('unlink', faviconAndHtml);
+
+  gulp.watch(config.sourceGlobs.html, taskCreator(change))
+      .on('add', html)
+      .on('change', html)
+      .on('unlink', htmlAndScss);
+
+  gulp.watch(config.sourceGlobs.scss, taskCreator(change))
+      .on('add', htmlAndScss)
+      .on('change', htmlAndScss)
+      .on('unlink', htmlAndScss);
+
+  return Promise.resolve();
+};
 
 /**
  * Logs that a file change was detected.
+ * @return {Promise} Resolved promise
  */
 const change = () => {
   console.log('File changed, processing.');
+  return Promise.resolve();
 };
 
 /**
@@ -202,28 +363,9 @@ const change = () => {
  */
 export const start = gulp.series(
     build,
-    dynamicFunc(() => {
-      browserSync.init({
-        server: './dist',
-        open: false,
-        files: ['./dist/**/*'],
-        listen: '::1',
-      });
-      if (scripts.length) {
-        gulp.watch(config.js, gulp.parallel(change, ...scripts));
-      }
-      if (styles.length) {
-        gulp.watch(config.scss, gulp.parallel(change, ...styles));
-      }
-      gulp.watch(config.html, change)
-          .on('add', html)
-          .on('change', html)
-          .on('unlink', regenerateHtml);
-      gulp.watch(config.files, change)
-          .on('add', files)
-          .on('change', files)
-          .on('unlink', regenerateFiles);
-    }, 'watch'),
+    taskCreator(browserSyncInit),
+    taskCreator(startWatch),
 );
 
+export {cleanTask as clean};
 export default build;
