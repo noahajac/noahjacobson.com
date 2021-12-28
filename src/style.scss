@@ -1,0 +1,58 @@
+@import "terminal.css/dist/terminal";
+
+:root {
+  --background-color: midnightblue;
+  --invert-font-color: midnightblue;
+  --font-color: pink;
+  --secondary-color: lavender;
+  --primary-color: yellowgreen;
+  --page-width: 60em;
+}
+
+header > h2 {
+  font-size: 1.17em;
+}
+
+.secondary {
+  color: var(--secondary-color);
+}
+
+.terminal-prompt::before {
+  content: "";
+}
+
+main {
+  display: flex;
+  flex-direction: column;
+}
+
+.section {
+  margin: 15px 0;
+
+  .btn {
+    display: block;
+    margin-bottom: 10px;
+
+    &:last-of-type {
+      margin-bottom: 0;
+    }
+  }
+}
+
+#contacts-list {
+  font-size: 1.1em;
+
+  li {
+    height: 1.5em;
+    margin-bottom: 8px;
+    min-height: 48px;
+  }
+
+  i {
+    color: var(--font-color);
+  }
+
+  a:hover i {
+    color: var(--invert-font-color);
+  }
+}

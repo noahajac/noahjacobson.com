@@ -1,21 +1,56 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="./styles.css">
-    <title>Hello, world!</title>
-  </head>
-  <body>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Noah Jacobson's personal website.">
+  <meta name="author" content="Noah Jacobson">
+  <link rel="stylesheet" href="./style.css">
+  @@include('./favicons/favicons.html')
+  <title>Noah Jacobson</title>
+</head>
+<body class="container">
+  <header>
     <h1>Noah Jacobson</h1>
-    <ul>
-      <li><a href="mailto://noah@noahjacobson.com">Email - <i>noah@noahjacobson.com</i></a></li>
-      <li><a href="https://discord.com/users/319276995731259393">Discord - <i>noahajac#3710</i></a></li>
-      <li><a href="https://github.com/noahajac">GitHub - <i>noahajac</i></a></li>
-      <li><a href="https://reddit.com/u/noahajac">Reddit - <i>noahajac</i></a></li>
-      <li><a href="https://twitter.com/noahajac">Twitter - <i>noahajac</i></a></li>
-    </ul>
-    <a href="./files">Hosted Files</a>
-    <a href="https://paypal.me/noahajac3">Donate to Me</a>
-  </body>
+    <h2>I do computer stuff.</h2>
+  </header>
+  <main>
+    <div role="region" class="section">
+      <div>Connected to noahjacobson.com.</div>
+      <div>[noah@noahjacobson.com <span class="secondary">~</span>]$ <span class="secondary">cat contactme.txt</span></div>
+    </div>
+    <div role="region" class="section">
+      <div class="terminal-card">
+        <header>Contact Me!</header>
+        <div>
+          <ul id="contacts-list">
+            <li><a href="mailto://noah@noahjacobson.com">Email - <i>noah@noahjacobson.com</i></a></li>
+            <li><a href="https://discord.com/users/319276995731259393">Discord - <i>noahajac#3710</i></a></li>
+            <li><a href="https://github.com/noahajac">GitHub - <i>noahajac</i></a></li>
+            <li><a href="https://reddit.com/u/noahajac">Reddit - <i>noahajac</i></a></li>
+            <li><a href="https://twitter.com/noahajac">Twitter - <i>noahajac</i></a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div role="region" class="section">
+      <div>[noah@noahjacobson.com <span class="secondary">~</span>]$ <span class="secondary">cat links.txt</span></div>
+    </div>
+    <div role="region" class="section">
+      <div class="terminal-card">
+        <header>Links!</header>
+        <div>
+          <a role="button" aria-pressed="false" class="btn btn-primary" href="./files">View Hosted Files</a>
+          <a role="button" aria-pressed="false" class="btn" href="https://paypal.me/noahajac3">Give Me Money</a>
+        </div>
+      </div>
+
+    </div>
+    <div role="region" class="section">
+      <div>[noah@noahjacobson.com <span class="secondary">~</span>]$ <span class="secondary">exit</span></div>
+      <div>Connection to noahjacobson.com closed.</div>
+      <div><span class="terminal-prompt">&gt; $</span></div>
+    </div>
+  </main>
+</body>
 </html>
