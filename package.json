@@ -11,7 +11,8 @@
     "prepare": "husky install"
   },
   "author": "Noah Jacobson",
-  "license": "ISC",
+  "license": "UNLICENSED",
+  "private": true,
   "devDependencies": {
     "@commitlint/cli": "^15.0.0",
     "@commitlint/config-conventional": "^15.0.0",
@@ -35,6 +36,7 @@
     "sass": "^1.45.1",
     "stylelint": "^14.2.0",
     "stylelint-config-standard-scss": "^3.0.0",
+    "through2": "^4.0.2",
     "webpack": "^5.65.0",
     "webpack-stream": "^7.0.0",
     "yargs": "^17.3.1"
