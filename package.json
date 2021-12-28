@@ -1,6 +1,6 @@
 {
   "name": "noahjacobson.com",
-  "version": "1.0.1",
+  "version": "2.0.0",
   "description": "",
   "type": "module",
   "scripts": {
@@ -106,7 +106,7 @@
       "start_url": "/",
       "url": "https://noahjacobson.com",
       "icons": {
-          "appleStartup": false
+        "appleStartup": false
       }
     }
   }
