@@ -52,6 +52,10 @@ main {
     color: var(--font-color);
   }
 
+  a.no-link {
+    cursor: initial;
+  }
+
   a:hover i {
     color: var(--invert-font-color);
   }
