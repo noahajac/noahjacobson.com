@@ -3,6 +3,9 @@
   "version": "2.3.0",
   "description": "",
   "type": "module",
+  "engines" : { 
+    "node" : ">=14.0.0 <15.0.0"
+  },
   "scripts": {
     "gulp": "node --experimental-json-modules ./node_modules/.bin/gulp",
     "build": "npm run gulp build -- --prod",
