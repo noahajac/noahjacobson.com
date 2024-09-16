@@ -3,14 +3,21 @@
 :root {
   --background-color: midnightblue;
   --invert-font-color: midnightblue;
-  --font-color: pink;
+  --font-color: yellowgreen;
   --secondary-color: lavender;
   --primary-color: yellowgreen;
   --page-width: 60em;
 }
 
-header > h2 {
-  font-size: 1.17em;
+header {
+  & > h1 {
+    padding: var(--global-space) 0;
+  }
+
+  & > h2 {
+    font-size: 1.17em;
+    text-decoration: underline;
+  }
 }
 
 .secondary {
@@ -46,14 +53,11 @@ main {
     height: 1.5em;
     margin-bottom: 8px;
     min-height: 48px;
+    text-decoration: underline;
   }
 
-  i {
-    color: var(--font-color);
-  }
-
-  a:hover i {
-    color: var(--invert-font-color);
+  li span {
+    font-weight: bold;
   }
 }
 
