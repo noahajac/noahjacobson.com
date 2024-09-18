@@ -15,6 +15,7 @@ import stripComments from 'gulp-strip-json-comments';
 import favicons from 'gulp-favicons';
 import through from 'through2';
 import fileinclude from 'gulp-file-include';
+import gulpPlumber from 'gulp-plumber';
 
 /**
  * Create browsersync object.
@@ -37,12 +38,29 @@ const config = (() => {
     config.distGlobs.script.push(config.dist + glob);
   });
 
+  /**
+   * Inverts a glob array from include to exclude.
+   * @param {String[]} globArray Array of globs
+   * @return {String[]} Inverted array of globs
+   */
+  const invertGlob = (globArray) => {
+    return globArray.map((glob) => {
+      return '!' + glob;
+    });
+  };
+
   // Create globs for html.
   config.sourceGlobs.html = [];
   config.distGlobs.html = [];
   config.html.forEach((glob) => {
     config.sourceGlobs.html.push(config.source + glob);
     config.distGlobs.html.push(config.dist + glob);
+  });
+
+  // Create globs for partials.
+  config.sourceGlobs.partials = [];
+  config.partials.forEach((glob) => {
+    config.sourceGlobs.partials.push(config.source + glob);
   });
 
   // Create globs for scss.
@@ -56,17 +74,6 @@ const config = (() => {
   // Create the glob for the favicon.
   config.sourceGlobs.favicon = [config.source + config.favicon];
   config.distGlobs.favicon = [config.dist + '/favicons/*'];
-
-  /**
-   * Inverts a glob array from include to exclude.
-   * @param {String[]} globArray Array of globs
-   * @return {String[]} Inverted array of globs
-   */
-  const invertGlob = (globArray) => {
-    return globArray.map((glob) => {
-      return '!' + glob;
-    });
-  };
 
   // Create globs for files.
   config.sourceGlobs.file = [];
@@ -101,6 +108,11 @@ const config = (() => {
   config.distGlobs.scss.push(...invertGlob([config.h5aiConfig.dist + '/*']));
   config.distGlobs.file.push(...invertGlob([config.h5aiConfig.dist + '/*']));
   config.distGlobs.favicon.push(...invertGlob([config.h5aiConfig.dist + '/*']));
+
+  // Add exclusions for partials.
+  config.partials.forEach((glob) => {
+    config.sourceGlobs.html.push(...invertGlob([config.source + glob]));
+  });
 
   return config;
 })();
@@ -182,10 +194,16 @@ const scss = (source = config.sourceGlobs.scss) => {
  * @return {Node.ReadWriteStream} Node stream
  */
 const html = (source = config.sourceGlobs.html) => {
-  return gulp.src(source)
+  return gulp.src(source, {base: config.src})
+      .pipe(gulpPlumber())
+      .pipe(fileinclude({
+        basepath: config.source,
+      }))
       .pipe(fileinclude({
         basepath: config.dist,
+        prefix: '%%',
       }))
+      .pipe(gulpPlumber.stop())
       .pipe(critical.stream({
         base: './dist',
         inline: true,
@@ -237,6 +255,18 @@ const favicon = (source = config.sourceGlobs.favicon) => {
 };
 
 /**
+ * Removes unused favicon file after build.
+ * @return {NodeJS.ReadWriteStream} Node stream
+ */
+const faviconPost = () => {
+  if (isProd) {
+    return del((config.dist + '/favicons/favicons.html'));
+  } else {
+    return Promise.resolve();
+  }
+};
+
+/**
  * Sources and copies h5ai files.
  * @param {String | String[]} source Path of files to source
  * @return {NodeJS.ReadWriteStream} Node stream
@@ -275,6 +305,7 @@ export const build = gulp.series(
                 taskCreator(scss),
             ),
             taskCreator(html),
+            taskCreator(faviconPost),
         ),
         gulp.series(
             taskCreator(h5ai),
@@ -340,6 +371,11 @@ const startWatch = () => {
       .on('add', faviconAndHtml)
       .on('change', faviconAndHtml)
       .on('unlink', faviconAndHtml);
+
+  gulp.watch(config.sourceGlobs.partials, taskCreator(change))
+      .on('add', htmlAndScss)
+      .on('change', htmlAndScss)
+      .on('unlink', htmlAndScss);
 
   gulp.watch(config.sourceGlobs.html, taskCreator(change))
       .on('add', html)
