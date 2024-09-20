@@ -228,7 +228,6 @@ const html = (source = config.sourceGlobs.html) => {
  * @return {NodeJS.ReadWriteStream} Node stream
  */
 const file = (source = config.sourceGlobs.file) => {
-  console.log(source);
   return gulp.src(source, {dot: true, base: config.source})
       .pipe(gulp.dest(config.dist));
 };
