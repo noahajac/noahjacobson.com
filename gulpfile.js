@@ -2,6 +2,7 @@ import gulp from 'gulp';
 import {create as bsCreate} from 'browser-sync';
 import gulpSass from 'gulp-sass';
 import del from 'del';
+import path from 'path';
 import sassCompiler from 'sass';
 import htmlmin from 'gulp-htmlmin';
 import webpack from 'webpack-stream';
@@ -179,7 +180,7 @@ const script = (source = config.sourceGlobs.script) => {
  * @return {NodeJS.ReadWriteStream} Node stream
  */
 const scss = (source = config.sourceGlobs.scss) => {
-  return gulp.src(source)
+  return gulp.src(source, {base: config.source})
       .pipe(gulpSass(sassCompiler)({
         includePaths: ['node_modules'],
       }))
@@ -194,7 +195,7 @@ const scss = (source = config.sourceGlobs.scss) => {
  * @return {Node.ReadWriteStream} Node stream
  */
 const html = (source = config.sourceGlobs.html) => {
-  return gulp.src(source, {base: config.src})
+  return gulp.src(source, {base: config.source})
       .pipe(gulpPlumber())
       .pipe(fileinclude({
         basepath: config.source,
@@ -205,7 +206,7 @@ const html = (source = config.sourceGlobs.html) => {
       }))
       .pipe(gulpPlumber.stop())
       .pipe(critical.stream({
-        base: './dist',
+        base: config.dist,
         inline: true,
         extract: true,
       }))
@@ -227,7 +228,8 @@ const html = (source = config.sourceGlobs.html) => {
  * @return {NodeJS.ReadWriteStream} Node stream
  */
 const file = (source = config.sourceGlobs.file) => {
-  return gulp.src(source, {dot: true, nodir: true})
+  console.log(source);
+  return gulp.src(source, {dot: true, base: config.source})
       .pipe(gulp.dest(config.dist));
 };
 
@@ -237,7 +239,7 @@ const file = (source = config.sourceGlobs.file) => {
  * @return {NodeJS.ReadWriteStream} Node stream
  */
 const favicon = (source = config.sourceGlobs.favicon) => {
-  return gulp.src(source)
+  return gulp.src(source, {base: config.source})
       .pipe(
           favicons({
             ...config.faviconConfig,
@@ -346,12 +348,16 @@ const startWatch = () => {
           taskCreator(clean, config.distGlobs.script),
           taskCreator(script)));
 
+  const fileClean = (file) => {
+    taskCreator(
+        clean(path.join(config.dist, path.relative(config.source, file))),
+    );
+  };
+
   gulp.watch(config.sourceGlobs.file, taskCreator(change))
       .on('add', file)
       .on('change', file)
-      .on('unlink', gulp.series(
-          taskCreator(clean, config.distGlobs.file),
-          taskCreator(file)));
+      .on('unlink', fileClean);
 
   const htmlAndScss = gulp.series(
       taskCreator(clean, config.distGlobs.html),
