@@ -1,4 +1,4 @@
-Contact: mailto:noah@noahjacobson.com
+Contact: mailto:security@noahjacobson.com
 Contact: https://noahjacobson.com
 Expires: 2031-12-31T05:00:00.000Z
 Preferred-Languages: en
